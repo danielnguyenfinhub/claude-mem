@@ -36,6 +36,14 @@ class FakeChildProcess extends EventEmitter {
   }
 }
 
+// Snapshot the real modules before mock.module mutates the live namespace, then
+// re-register them in afterAll. bun's mock.module is process-global and
+// mock.restore() does NOT undo it, so an unrestored mock here leaks into every
+// test file that runs after this one in the same `bun test` process.
+import * as real_stdio from '@modelcontextprotocol/sdk/client/stdio.js';
+const real_stdio_snapshot = { ...real_stdio };
+import * as real_index from '@modelcontextprotocol/sdk/client/index.js';
+const real_index_snapshot = { ...real_index };
 mock.module('@modelcontextprotocol/sdk/client/stdio.js', () => ({
   StdioClientTransport: class FakeTransport {
     onclose: (() => void) | null = null;
@@ -171,4 +179,9 @@ describe('ChromaMcpManager SSL flag regression (#1286)', () => {
     expect(args).toContain('--client-type');
     expect(args[args.indexOf('--client-type') + 1]).toBe('persistent');
   });
+});
+
+afterAll(() => {
+  mock.module('@modelcontextprotocol/sdk/client/stdio.js', () => real_stdio_snapshot);
+  mock.module('@modelcontextprotocol/sdk/client/index.js', () => real_index_snapshot);
 });

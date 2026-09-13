@@ -1,8 +1,16 @@
 
-import { describe, it, expect, mock, beforeEach, afterEach, spyOn } from 'bun:test';
+import { describe, it, expect, mock, beforeEach, afterEach, spyOn, afterAll } from 'bun:test';
 import type { Request, Response } from 'express';
 import { logger } from '../../../../src/utils/logger.js';
 
+// Snapshot the real modules before mock.module mutates the live namespace, then
+// re-register them in afterAll. bun's mock.module is process-global and
+// mock.restore() does NOT undo it, so an unrestored mock here leaks into every
+// test file that runs after this one in the same `bun test` process.
+import * as real_paths from '../../../../src/shared/paths.js';
+const real_paths_snapshot = { ...real_paths };
+import * as real_worker_utils from '../../../../src/shared/worker-utils.js';
+const real_worker_utils_snapshot = { ...real_worker_utils };
 mock.module('../../../../src/shared/paths.js', () => ({
   getPackageRoot: () => '/tmp/test',
 }));
@@ -200,4 +208,9 @@ describe('DataRoutes Type Coercion', () => {
       expect(statusSpy).toHaveBeenCalledWith(400);
     });
   });
+});
+
+afterAll(() => {
+  mock.module('../../../../src/shared/paths.js', () => real_paths_snapshot);
+  mock.module('../../../../src/shared/worker-utils.js', () => real_worker_utils_snapshot);
 });

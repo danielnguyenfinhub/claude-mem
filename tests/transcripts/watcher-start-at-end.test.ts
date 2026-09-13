@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn, afterAll } from 'bun:test';
 import { appendFileSync, mkdirSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -7,6 +7,12 @@ import type { TranscriptSchema, WatchTarget } from '../../src/services/transcrip
 
 const sessionInitCalls: NormalizedHookInput[] = [];
 
+// Snapshot the real modules before mock.module mutates the live namespace, then
+// re-register them in afterAll. bun's mock.module is process-global and
+// mock.restore() does NOT undo it, so an unrestored mock here leaks into every
+// test file that runs after this one in the same `bun test` process.
+import * as real_session_init from '../../src/cli/handlers/session-init.js';
+const real_session_init_snapshot = { ...real_session_init };
 mock.module('../../src/cli/handlers/session-init.js', () => ({
   sessionInitHandler: {
     execute: async (input: NormalizedHookInput) => {
@@ -108,4 +114,8 @@ describe('TranscriptWatcher startAtEnd', () => {
     expect(prompts).toContain('live prompt');
     expect(prompts).not.toContain('historical prompt that must not be replayed');
   });
+});
+
+afterAll(() => {
+  mock.module('../../src/cli/handlers/session-init.js', () => real_session_init_snapshot);
 });

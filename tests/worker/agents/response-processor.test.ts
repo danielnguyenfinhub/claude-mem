@@ -1,6 +1,16 @@
-import { describe, it, expect, mock, beforeEach, afterEach, spyOn } from 'bun:test';
+import { describe, it, expect, mock, beforeEach, afterEach, spyOn, afterAll } from 'bun:test';
 import { logger } from '../../../src/utils/logger.js';
 
+// Snapshot the real modules before mock.module mutates the live namespace, then
+// re-register them in afterAll. bun's mock.module is process-global and
+// mock.restore() does NOT undo it, so an unrestored mock here leaks into every
+// test file that runs after this one in the same `bun test` process.
+import * as real_worker_service from '../../../src/services/worker-service.js';
+const real_worker_service_snapshot = { ...real_worker_service };
+import * as real_worker_utils from '../../../src/shared/worker-utils.js';
+const real_worker_utils_snapshot = { ...real_worker_utils };
+import * as real_ModeManager from '../../../src/services/domain/ModeManager.js';
+const real_ModeManager_snapshot = { ...real_ModeManager };
 mock.module('../../../src/services/worker-service.js', () => ({
   updateCursorContextForProject: () => Promise.resolve(),
 }));
@@ -694,4 +704,10 @@ describe('ResponseProcessor', () => {
       expect(session.lastSummaryStored).toBe(false);
     });
   });
+});
+
+afterAll(() => {
+  mock.module('../../../src/services/worker-service.js', () => real_worker_service_snapshot);
+  mock.module('../../../src/shared/worker-utils.js', () => real_worker_utils_snapshot);
+  mock.module('../../../src/services/domain/ModeManager.js', () => real_ModeManager_snapshot);
 });

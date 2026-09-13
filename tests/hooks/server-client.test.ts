@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, mock, afterAll } from 'bun:test';
 
+// Snapshot the real modules before mock.module mutates the live namespace, then
+// re-register them in afterAll. bun's mock.module is process-global and
+// mock.restore() does NOT undo it, so an unrestored mock here leaks into every
+// test file that runs after this one in the same `bun test` process.
+import * as real_worker_utils from '../../src/shared/worker-utils.js';
+const real_worker_utils_snapshot = { ...real_worker_utils };
 mock.module('../../src/shared/worker-utils.js', () => ({
   fetchWithTimeout: async (url: string, init: RequestInit, _timeoutMs: number) => {
     return globalThis.fetch(url, init);
@@ -330,4 +336,8 @@ describe('ServerClient', () => {
       platformSource: 'cursor',
     });
   });
+});
+
+afterAll(() => {
+  mock.module('../../src/shared/worker-utils.js', () => real_worker_utils_snapshot);
 });

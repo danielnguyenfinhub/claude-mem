@@ -1,8 +1,14 @@
-import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, mock, afterAll } from 'bun:test';
 import { OBSERVER_SESSIONS_DIR } from '../../src/shared/paths.js';
 import { normalize } from 'path';
 
 // Mock loadFromFileOnce to avoid real file I/O and settings-dependent results
+// Snapshot the real modules before mock.module mutates the live namespace, then
+// re-register them in afterAll. bun's mock.module is process-global and
+// mock.restore() does NOT undo it, so an unrestored mock here leaks into every
+// test file that runs after this one in the same `bun test` process.
+import * as real_hook_settings from '../../src/shared/hook-settings.js';
+const real_hook_settings_snapshot = { ...real_hook_settings };
 mock.module('../../src/shared/hook-settings.js', () => ({
   loadFromFileOnce: () => ({ CLAUDE_MEM_EXCLUDED_PROJECTS: '' }),
 }));
@@ -50,4 +56,8 @@ describe('shouldTrackProject — path normalization', () => {
     process.env.CLAUDE_MEM_INTERNAL = '1';
     expect(shouldTrackProject('/any/path')).toBe(false);
   });
+});
+
+afterAll(() => {
+  mock.module('../../src/shared/hook-settings.js', () => real_hook_settings_snapshot);
 });

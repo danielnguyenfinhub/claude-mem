@@ -21,6 +21,7 @@ import {
   type Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from '../../utils/logger.js';
+import { jsonResponseText } from '../../shared/compact-json.js';
 
 export interface RecallBackend {
   // Returns serialized observations (already shaped by serializeObservation),
@@ -93,7 +94,7 @@ function requireString(args: Record<string, unknown>, key: string): string {
 }
 
 function jsonResult(payload: unknown): CallToolResult {
-  return { content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }] };
+  return { content: [{ type: 'text', text: jsonResponseText(payload) }] };
 }
 
 // Dispatches a single tool call to the backend. Throws on unknown tools or

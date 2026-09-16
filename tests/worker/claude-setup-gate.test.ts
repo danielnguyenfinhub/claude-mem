@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, mock, afterAll } from 'bun:test';
 import { ClassifiedProviderError } from '../../src/services/worker/provider-errors.js';
 import {
   CLAUDE_CLI_SETUP_RECHECK_COOLDOWN_MS,
@@ -9,6 +9,12 @@ import type { ActiveSession } from '../../src/services/worker-types.js';
 
 let findClaudeExecutableImpl: () => string = () => '/mock/claude';
 
+// Snapshot the real modules before mock.module mutates the live namespace, then
+// re-register them in afterAll. bun's mock.module is process-global and
+// mock.restore() does NOT undo it, so an unrestored mock here leaks into every
+// test file that runs after this one in the same `bun test` process.
+import * as real_find_claude_executable from '../../src/shared/find-claude-executable.js';
+const real_find_claude_executable_snapshot = { ...real_find_claude_executable };
 mock.module('../../src/shared/find-claude-executable.js', () => ({
   findClaudeExecutable: () => findClaudeExecutableImpl(),
 }));
@@ -157,4 +163,8 @@ describe('Claude setup-required generator gate', () => {
       remediation: expect.stringContaining('Claude Code CLI'),
     });
   });
+});
+
+afterAll(() => {
+  mock.module('../../src/shared/find-claude-executable.js', () => real_find_claude_executable_snapshot);
 });

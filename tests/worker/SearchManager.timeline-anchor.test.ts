@@ -1,5 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, mock, afterAll } from 'bun:test';
 
+// Snapshot the real modules before mock.module mutates the live namespace, then
+// re-register them in afterAll. bun's mock.module is process-global and
+// mock.restore() does NOT undo it, so an unrestored mock here leaks into every
+// test file that runs after this one in the same `bun test` process.
+import * as real_ModeManager from '../../src/services/domain/ModeManager.js';
+const real_ModeManager_snapshot = { ...real_ModeManager };
 mock.module('../../src/services/domain/ModeManager.js', () => ({
   ModeManager: {
     getInstance: () => ({
@@ -338,4 +344,8 @@ describe('SearchManager.timeline() anchor dispatch', () => {
     expect(text).not.toContain('CLAUDE_LEAK_SUMMARY');
     expect(text).not.toContain('CLAUDE_LEAK_PROMPT');
   });
+});
+
+afterAll(() => {
+  mock.module('../../src/services/domain/ModeManager.js', () => real_ModeManager_snapshot);
 });

@@ -38,6 +38,7 @@ import {
   type ServerRuntimeContext,
 } from '../services/hooks/runtime-selector.js';
 import { normalizePlatformSource } from '../shared/platform-source.js';
+import { jsonResponseText } from '../shared/compact-json.js';
 
 let mcpServerDirResolutionFailed = false;
 const mcpServerDir = (() => {
@@ -103,7 +104,7 @@ async function callWorker(
       return { content: [{ type: 'text' as const, text: await response.text() }] };
     }
     if (opts.body) {
-      return { content: [{ type: 'text' as const, text: JSON.stringify(await response.json(), null, 2) }] };
+      return { content: [{ type: 'text' as const, text: jsonResponseText(await response.json()) }] };
     }
     return await response.json() as { content: Array<{ type: 'text'; text: string }>; isError?: boolean };
   } catch (error: unknown) {
@@ -194,7 +195,7 @@ function formatJsonResult(payload: unknown): { content: Array<{ type: 'text'; te
   return {
     content: [{
       type: 'text' as const,
-      text: JSON.stringify(payload, null, 2),
+      text: jsonResponseText(payload),
     }],
   };
 }

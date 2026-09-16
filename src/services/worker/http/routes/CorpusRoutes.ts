@@ -8,6 +8,7 @@ import { CorpusBuilder } from '../../knowledge/CorpusBuilder.js';
 import { KnowledgeAgent } from '../../knowledge/KnowledgeAgent.js';
 import type { CorpusFilter } from '../../knowledge/types.js';
 import { logger } from '../../../../utils/logger.js';
+import { jsonResponseText } from '../../../../shared/compact-json.js';
 
 const ALLOWED_CORPUS_TYPES = ['decision', 'bugfix', 'feature', 'refactor', 'discovery', 'change', 'security_alert', 'security_note'] as const;
 const ALLOWED_CORPUS_TYPE_SET = new Set<string>(ALLOWED_CORPUS_TYPES);
@@ -108,7 +109,7 @@ export class CorpusRoutes extends BaseRouteHandler {
   private handleListCorpora = this.wrapHandler((_req: Request, res: Response): void => {
     const corpora = this.corpusStore.list();
     res.json({
-      content: [{ type: 'text', text: JSON.stringify(corpora, null, 2) }]
+      content: [{ type: 'text', text: jsonResponseText(corpora) }]
     });
   });
 
